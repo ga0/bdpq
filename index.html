@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#fff7df" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="bdpq" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>bdpq 快速辨认小游戏</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell" aria-labelledby="game-title">
+      <section class="hero-panel">
+        <div>
+          <p class="eyebrow">小写字母辨认</p>
+          <h1 id="game-title">找找它的大写朋友</h1>
+        </div>
+        <div class="hero-controls">
+          <button class="icon-button" id="pauseButton" type="button" aria-label="继续" title="继续" aria-pressed="true">
+            ▶
+          </button>
+          <button class="icon-button" id="resetButton" type="button" aria-label="重新开始" title="重新开始">
+            ↻
+          </button>
+        </div>
+      </section>
+
+      <section class="score-board" aria-label="游戏状态">
+        <div class="stat">
+          <span>得分</span>
+          <strong id="score">0</strong>
+        </div>
+        <div class="stat">
+          <span>题数</span>
+          <strong id="round">1</strong>
+        </div>
+        <div class="stat">
+          <span>限时</span>
+          <strong><span id="limit">10</span>s</strong>
+        </div>
+      </section>
+
+      <section class="letter-card" aria-live="polite">
+        <div class="timer-track" id="timerTrack" aria-hidden="true">
+          <div class="timer-fill" id="timerFill"></div>
+        </div>
+        <div class="prompt-row">
+          <p class="prompt">点击对应的大写字母</p>
+          <div class="combo-badge" id="comboBadge" aria-live="polite">
+            <span>连击</span>
+            <strong id="comboCount">0</strong>
+          </div>
+        </div>
+        <div class="letter-display" id="letterDisplay">b</div>
+        <p class="feedback" id="feedback">准备好了吗？</p>
+      </section>
+
+      <section class="choices" aria-label="答案选项">
+        <button class="choice choice-b" type="button" data-choice="b">B</button>
+        <button class="choice choice-d" type="button" data-choice="d">D</button>
+        <button class="choice choice-p" type="button" data-choice="p">P</button>
+        <button class="choice choice-q" type="button" data-choice="q">Q</button>
+      </section>
+
+      <section class="progress-panel" aria-label="进度">
+        <div>
+          <span class="mini-label">连对提速</span>
+          <strong id="speedHint">连对 0/10</strong>
+        </div>
+        <div>
+          <span class="mini-label">连错回退</span>
+          <strong id="mistakeHint">连错 0/3</strong>
+        </div>
+        <div>
+          <span class="mini-label">最高分</span>
+          <strong id="bestScore">0</strong>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
