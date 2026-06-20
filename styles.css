@@ -295,6 +295,12 @@ h1 {
     filter 180ms ease;
 }
 
+.letter-card[data-mode="pinyin"] .letter-display {
+  font-size: clamp(118px, 36vw, 186px);
+  line-height: 1;
+  text-transform: none;
+}
+
 .letter-card.is-paused .letter-display {
   filter: saturate(0.6) brightness(0.9);
 }
@@ -404,7 +410,7 @@ h1 {
 
 .progress-panel {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   padding: 16px 18px;
   border-radius: 8px;
@@ -417,7 +423,76 @@ h1 {
 .progress-panel strong {
   display: block;
   margin-top: 3px;
+  font-size: 17px;
+}
+
+.stats-float {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 3;
+  width: min(460px, calc(100vw - 40px));
+  padding: 16px;
+  border: 3px solid rgba(43, 35, 82, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 250, 242, 0.98);
+  box-shadow: 0 22px 46px rgba(43, 35, 82, 0.22);
+}
+
+.stats-title {
+  margin-bottom: 10px;
+  color: var(--ink);
   font-size: 18px;
+  font-weight: 900;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.stats-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.stats-mode {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.stats-row span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fff1ba;
+  font-weight: 900;
+}
+
+.stats-row strong {
+  font-size: 18px;
+}
+
+.stats-row small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 @keyframes shard-burst {
@@ -556,11 +631,23 @@ h1 {
   }
 
   .progress-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     padding: 14px 12px;
   }
 
   .progress-panel strong {
     font-size: 15px;
+  }
+
+  .stats-float {
+    left: 14px;
+    right: 14px;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    width: auto;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
   }
 }

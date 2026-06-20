@@ -1,8 +1,57 @@
-const letters = ["b", "d", "p", "q"];
+const initials = ["b", "d", "p", "q"];
 const INITIAL_TIME_LIMIT = 10;
 const MIN_TIME_LIMIT = 1;
-const CORRECTS_TO_SPEED_UP = 10;
-const WRONGS_TO_SLOW_DOWN = 3;
+const SCORE_PER_LEVEL = 20;
+const LEVEL_TIME_FACTOR = 0.9;
+const STATS_STORAGE_KEY = "bdpq-accuracy-stats-v1";
+
+const modes = {
+  english: {
+    label: "英语",
+    eyebrow: "英语字母辨认",
+    prompt: "点击对应的大写字母",
+    choices: ["B", "D", "P", "Q"],
+  },
+  pinyin: {
+    label: "拼音",
+    eyebrow: "拼音声母辨认",
+    prompt: "这个字的声母是？",
+    choices: ["b", "d", "p", "q"],
+  },
+};
+
+const pinyinQuestions = [
+  { display: "八", answer: "b", pinyin: "ba" },
+  { display: "爸", answer: "b", pinyin: "ba" },
+  { display: "不", answer: "b", pinyin: "bu" },
+  { display: "白", answer: "b", pinyin: "bai" },
+  { display: "北", answer: "b", pinyin: "bei" },
+  { display: "半", answer: "b", pinyin: "ban" },
+  { display: "大", answer: "d", pinyin: "da" },
+  { display: "的", answer: "d", pinyin: "de" },
+  { display: "地", answer: "d", pinyin: "di" },
+  { display: "东", answer: "d", pinyin: "dong" },
+  { display: "冬", answer: "d", pinyin: "dong" },
+  { display: "对", answer: "d", pinyin: "dui" },
+  { display: "皮", answer: "p", pinyin: "pi" },
+  { display: "朋", answer: "p", pinyin: "peng" },
+  { display: "平", answer: "p", pinyin: "ping" },
+  { display: "跑", answer: "p", pinyin: "pao" },
+  { display: "拍", answer: "p", pinyin: "pai" },
+  { display: "片", answer: "p", pinyin: "pian" },
+  { display: "七", answer: "q", pinyin: "qi" },
+  { display: "去", answer: "q", pinyin: "qu" },
+  { display: "青", answer: "q", pinyin: "qing" },
+  { display: "清", answer: "q", pinyin: "qing" },
+  { display: "气", answer: "q", pinyin: "qi" },
+  { display: "请", answer: "q", pinyin: "qing" },
+];
+
+const englishQuestions = initials.map((letter) => ({
+  display: letter,
+  answer: letter,
+  pinyin: letter,
+}));
 
 const cardThemes = [
   "linear-gradient(160deg, #232946 0%, #8357c5 100%)",
@@ -23,33 +72,38 @@ const shardClips = [
   "polygon(44% 52%, 92% 22%, 84% 90%, 34% 94%)",
 ];
 
+const modeEyebrowEl = document.querySelector("#modeEyebrow");
 const scoreEl = document.querySelector("#score");
+const levelEl = document.querySelector("#level");
 const roundEl = document.querySelector("#round");
 const limitEl = document.querySelector("#limit");
+const modeLabelEl = document.querySelector("#modeLabel");
+const nextLevelHintEl = document.querySelector("#nextLevelHint");
+const promptTextEl = document.querySelector("#promptText");
 const gameShell = document.querySelector(".game-shell");
 const letterCard = document.querySelector(".letter-card");
 const letterDisplay = document.querySelector("#letterDisplay");
 const feedbackEl = document.querySelector("#feedback");
 const timerTrack = document.querySelector("#timerTrack");
 const timerFill = document.querySelector("#timerFill");
-const speedHintEl = document.querySelector("#speedHint");
-const mistakeHintEl = document.querySelector("#mistakeHint");
 const comboBadge = document.querySelector("#comboBadge");
 const comboCountEl = document.querySelector("#comboCount");
 const bestScoreEl = document.querySelector("#bestScore");
+const statsFloat = document.querySelector("#statsFloat");
+const statsGrid = document.querySelector("#statsGrid");
 const pauseButton = document.querySelector("#pauseButton");
 const resetButton = document.querySelector("#resetButton");
 const choiceButtons = [...document.querySelectorAll(".choice")];
 
-let currentLetter = "b";
+let currentQuestion = { display: "", answer: "b", pinyin: "b" };
+let currentMode = "english";
 let score = 0;
+let level = 1;
 let completed = 0;
 let timeLimit = INITIAL_TIME_LIMIT;
-let correctStreak = 0;
-let wrongStreak = 0;
 let comboStreak = 0;
 let timerId = null;
-let roundStartedAt = 0;
+let nextRoundId = null;
 let roundDeadlineAt = 0;
 let roundDurationMs = INITIAL_TIME_LIMIT * 1000;
 let roundRemainingMs = roundDurationMs;
@@ -58,16 +112,98 @@ let isPaused = true;
 let pausedMode = "question";
 let currentThemeIndex = -1;
 let bestScore = Number(localStorage.getItem("bdpq-best-score") || 0);
+let accuracyStats = loadAccuracyStats();
 let audioContext = null;
 
-bestScoreEl.textContent = bestScore;
-
-function getTimeLimit() {
-  return timeLimit;
+function formatTime(seconds) {
+  return Number.isInteger(seconds) ? String(seconds) : seconds.toFixed(1);
 }
 
-function pickNextLetter() {
-  const candidates = letters.filter((letter) => letter !== currentLetter);
+function createEmptyAccuracyStats() {
+  return Object.fromEntries(
+    Object.keys(modes).map((mode) => [
+      mode,
+      Object.fromEntries(initials.map((initial) => [initial, { correct: 0, total: 0 }])),
+    ]),
+  );
+}
+
+function loadAccuracyStats() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STATS_STORAGE_KEY));
+    const stats = createEmptyAccuracyStats();
+
+    Object.keys(stats).forEach((mode) => {
+      initials.forEach((initial) => {
+        const savedCell = saved?.[mode]?.[initial];
+        if (savedCell) {
+          stats[mode][initial].correct = Number(savedCell.correct) || 0;
+          stats[mode][initial].total = Number(savedCell.total) || 0;
+        }
+      });
+    });
+
+    return stats;
+  } catch {
+    return createEmptyAccuracyStats();
+  }
+}
+
+function saveAccuracyStats() {
+  localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(accuracyStats));
+}
+
+function recordAttempt(mode, initial, isCorrect) {
+  const cell = accuracyStats[mode][initial];
+  cell.total += 1;
+  cell.correct += isCorrect ? 1 : 0;
+  saveAccuracyStats();
+}
+
+function formatAccuracy(cell) {
+  if (!cell.total) return "0%";
+  return `${Math.round((cell.correct / cell.total) * 100)}%`;
+}
+
+function renderAccuracyStats() {
+  const modeOrder = ["english", "pinyin"];
+  statsGrid.innerHTML = modeOrder
+    .map((mode) => {
+      const rows = initials
+        .map((initial) => {
+          const cell = accuracyStats[mode][initial];
+          const label = mode === "english" ? initial.toUpperCase() : initial;
+          return `
+            <div class="stats-row">
+              <span>${label}</span>
+              <strong>${formatAccuracy(cell)}</strong>
+              <small>${cell.correct}/${cell.total}</small>
+            </div>
+          `;
+        })
+        .join("");
+
+      return `
+        <div class="stats-card">
+          <div class="stats-mode">${modes[mode].label}</div>
+          ${rows}
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function toggleMode() {
+  currentMode = currentMode === "english" ? "pinyin" : "english";
+}
+
+function getQuestionPool() {
+  return currentMode === "english" ? englishQuestions : pinyinQuestions;
+}
+
+function pickNextQuestion() {
+  const pool = getQuestionPool();
+  const candidates = pool.filter((question) => question.display !== currentQuestion.display);
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
@@ -80,13 +216,25 @@ function pickNextTheme() {
   return next.theme;
 }
 
+function updateChoicesForMode() {
+  modes[currentMode].choices.forEach((label, index) => {
+    choiceButtons[index].textContent = label;
+    choiceButtons[index].setAttribute("aria-label", label);
+  });
+}
+
 function updateStats() {
+  const nextLevelScore = level * SCORE_PER_LEVEL;
+  const pointsToNextLevel = Math.max(0, nextLevelScore - score);
+
   scoreEl.textContent = score;
+  levelEl.textContent = level;
   roundEl.textContent = completed + 1;
-  limitEl.textContent = timeLimit;
-  speedHintEl.textContent =
-    timeLimit === MIN_TIME_LIMIT ? "已经最快啦" : `连对 ${correctStreak}/${CORRECTS_TO_SPEED_UP}`;
-  mistakeHintEl.textContent = `连错 ${wrongStreak}/${WRONGS_TO_SLOW_DOWN}`;
+  limitEl.textContent = formatTime(timeLimit);
+  modeLabelEl.textContent = modes[currentMode].label;
+  nextLevelHintEl.textContent = `差 ${pointsToNextLevel} 分`;
+  modeEyebrowEl.textContent = modes[currentMode].eyebrow;
+  promptTextEl.textContent = modes[currentMode].prompt;
   comboCountEl.textContent = comboStreak;
   comboBadge.className = "combo-badge";
 
@@ -155,6 +303,11 @@ function clearButtonStates() {
   });
 }
 
+function clearTimers() {
+  window.clearTimeout(timerId);
+  window.clearTimeout(nextRoundId);
+}
+
 function updatePauseButton() {
   pauseButton.textContent = isPaused ? "▶" : "Ⅱ";
   pauseButton.setAttribute("aria-label", isPaused ? "继续" : "暂停");
@@ -162,6 +315,11 @@ function updatePauseButton() {
   pauseButton.setAttribute("aria-pressed", String(isPaused));
   gameShell.classList.toggle("is-paused", isPaused);
   letterCard.classList.toggle("is-paused", isPaused);
+  statsFloat.hidden = !isPaused;
+
+  if (isPaused) {
+    renderAccuracyStats();
+  }
 }
 
 function startTimer(remainingMs) {
@@ -169,7 +327,6 @@ function startTimer(remainingMs) {
 
   roundRemainingMs = Math.max(0, remainingMs);
   roundDeadlineAt = Date.now() + roundRemainingMs;
-  roundStartedAt = roundDeadlineAt - roundDurationMs;
 
   const fillRatio = roundDurationMs > 0 ? roundRemainingMs / roundDurationMs : 0;
   timerFill.style.transition = "none";
@@ -219,7 +376,7 @@ function shatterLetter() {
     const distance = 90 + (index % 3) * 24;
 
     shard.className = "letter-shard";
-    shard.textContent = currentLetter;
+    shard.textContent = currentQuestion.display;
     shard.style.setProperty("--clip", clip);
     shard.style.setProperty("--x", `${Math.cos(angle) * distance}px`);
     shard.style.setProperty("--y", `${Math.sin(angle) * distance}px`);
@@ -230,40 +387,54 @@ function shatterLetter() {
   });
 }
 
-function recordWrongStreak() {
-  correctStreak = 0;
-  comboStreak = 0;
-  wrongStreak += 1;
-
-  if (wrongStreak < WRONGS_TO_SLOW_DOWN) {
-    return "";
+function correctAnswerFeedback() {
+  if (currentMode === "pinyin") {
+    return `“${currentQuestion.display}”的声母是 ${currentQuestion.answer}`;
   }
 
-  const previousTimeLimit = timeLimit;
-  timeLimit = Math.min(INITIAL_TIME_LIMIT, timeLimit + 1);
-  wrongStreak = 0;
+  return `这次是 ${currentQuestion.answer.toUpperCase()}`;
+}
 
-  return timeLimit > previousTimeLimit ? `慢一点也没关系，回到 ${timeLimit} 秒` : "现在已经是10秒，先稳住";
+function applyScore(delta) {
+  score += delta;
+
+  if (delta > 0) {
+    bestScore = Math.max(bestScore, score);
+    localStorage.setItem("bdpq-best-score", String(bestScore));
+  }
+
+  let leveledUp = false;
+
+  while (score >= level * SCORE_PER_LEVEL) {
+    level += 1;
+    timeLimit = Math.max(MIN_TIME_LIMIT, Number((timeLimit * LEVEL_TIME_FACTOR).toFixed(2)));
+    toggleMode();
+    leveledUp = true;
+  }
+
+  return leveledUp;
 }
 
 function startRound({ paused = false } = {}) {
-  window.clearTimeout(timerId);
+  clearTimers();
   clearButtonStates();
 
-  currentLetter = completed === 0 ? letters[Math.floor(Math.random() * letters.length)] : pickNextLetter();
-  roundDurationMs = getTimeLimit() * 1000;
+  currentQuestion = pickNextQuestion();
+  roundDurationMs = getTimeLimitMs();
   roundRemainingMs = roundDurationMs;
   acceptingAnswer = true;
   isPaused = paused;
   pausedMode = paused ? "question" : "";
 
-  letterDisplay.textContent = currentLetter;
+  letterCard.dataset.mode = currentMode;
+  letterDisplay.textContent = currentQuestion.display;
   letterDisplay.classList.remove("shattering");
   letterDisplay.style.background = pickNextTheme();
   letterDisplay.classList.remove("pop");
   window.requestAnimationFrame(() => letterDisplay.classList.add("pop"));
-  feedbackEl.textContent = paused ? "点继续开始" : "看清方向，再点按钮";
+  feedbackEl.textContent = paused ? "点继续开始" : "看清题目，再点按钮";
   feedbackEl.className = "feedback";
+  updateChoicesForMode();
   setButtonsDisabled(paused);
   updatePauseButton();
   updateStats();
@@ -276,6 +447,10 @@ function startRound({ paused = false } = {}) {
   }
 }
 
+function getTimeLimitMs() {
+  return timeLimit * 1000;
+}
+
 function finishRound(answer) {
   if (!acceptingAnswer || isPaused) return;
 
@@ -283,8 +458,9 @@ function finishRound(answer) {
   window.clearTimeout(timerId);
   setButtonsDisabled(true);
 
-  const isCorrect = answer === currentLetter;
-  const correctButton = document.querySelector(`[data-choice="${currentLetter}"]`);
+  const isCorrect = answer === currentQuestion.answer;
+  recordAttempt(currentMode, currentQuestion.answer, isCorrect);
+  const correctButton = document.querySelector(`[data-choice="${currentQuestion.answer}"]`);
   correctButton?.classList.add("is-correct");
 
   if (answer && !isCorrect) {
@@ -296,18 +472,11 @@ function finishRound(answer) {
   timerFill.style.transform = `scaleX(${remainingRatio})`;
 
   if (isCorrect) {
-    score += 1;
-    bestScore = Math.max(bestScore, score);
-    localStorage.setItem("bdpq-best-score", String(bestScore));
-    correctStreak += 1;
     comboStreak += 1;
-    wrongStreak = 0;
     shatterLetter();
 
-    if (correctStreak >= CORRECTS_TO_SPEED_UP) {
-      timeLimit = Math.max(MIN_TIME_LIMIT, timeLimit - 1);
-      correctStreak = 0;
-      feedbackEl.textContent = timeLimit === MIN_TIME_LIMIT ? "连对10次，已经最快啦！" : `连对10次，提速到 ${timeLimit} 秒！`;
+    if (applyScore(1)) {
+      feedbackEl.textContent = `升级到 ${level} 级，切换到${modes[currentMode].label}！`;
       playSound("level");
     } else {
       feedbackEl.textContent = "答对了，真棒！";
@@ -315,32 +484,30 @@ function finishRound(answer) {
     }
 
     feedbackEl.className = "feedback correct";
-  } else if (answer === null) {
-    flashMistake({ timeout: true });
-    feedbackEl.textContent = recordWrongStreak() || `时间到，答案是 ${currentLetter.toUpperCase()}`;
-    feedbackEl.className = "feedback wrong";
-    playSound("wrong");
   } else {
-    flashMistake();
-    feedbackEl.textContent = recordWrongStreak() || `这次是 ${currentLetter.toUpperCase()}，下一题继续`;
+    comboStreak = 0;
+    applyScore(-1);
+    flashMistake({ timeout: answer === null });
+    feedbackEl.textContent =
+      answer === null ? `时间到，${correctAnswerFeedback()}` : `${correctAnswerFeedback()}，下一题继续`;
     feedbackEl.className = "feedback wrong";
     playSound("wrong");
   }
 
   completed += 1;
   updateStats();
-  timerId = window.setTimeout(() => startRound(), isCorrect ? 850 : 950);
+  nextRoundId = window.setTimeout(() => startRound(), isCorrect ? 850 : 950);
 }
 
 function resetGame() {
-  window.clearTimeout(timerId);
+  clearTimers();
   score = 0;
+  level = 1;
   completed = 0;
   timeLimit = INITIAL_TIME_LIMIT;
-  correctStreak = 0;
-  wrongStreak = 0;
   comboStreak = 0;
-  currentLetter = "b";
+  currentMode = "english";
+  currentQuestion = { display: "", answer: "b", pinyin: "b" };
   startRound({ paused: true });
 }
 
@@ -355,7 +522,7 @@ function pauseGame() {
     feedbackEl.textContent = "暂停中，点继续开始";
   } else {
     pausedMode = "between";
-    window.clearTimeout(timerId);
+    clearTimers();
     feedbackEl.textContent = "暂停中，下一题等一等";
   }
 
@@ -375,7 +542,7 @@ function resumeGame() {
   if (mode === "question") {
     acceptingAnswer = true;
     setButtonsDisabled(false);
-    feedbackEl.textContent = "看清方向，再点按钮";
+    feedbackEl.textContent = "看清题目，再点按钮";
     feedbackEl.className = "feedback";
     startTimer(roundRemainingMs);
   } else {
@@ -407,7 +574,7 @@ window.addEventListener("keydown", (event) => {
     return;
   }
 
-  if (letters.includes(key)) {
+  if (initials.includes(key)) {
     finishRound(key);
   }
 });

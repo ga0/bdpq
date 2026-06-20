@@ -17,8 +17,8 @@
     <main class="game-shell" aria-labelledby="game-title">
       <section class="hero-panel">
         <div>
-          <p class="eyebrow">小写字母辨认</p>
-          <h1 id="game-title">找找它的大写朋友</h1>
+          <p class="eyebrow" id="modeEyebrow">英语字母辨认</p>
+          <h1 id="game-title">找找它的答案</h1>
         </div>
         <div class="hero-controls">
           <button class="icon-button" id="pauseButton" type="button" aria-label="继续" title="继续" aria-pressed="true">
@@ -36,8 +36,8 @@
           <strong id="score">0</strong>
         </div>
         <div class="stat">
-          <span>题数</span>
-          <strong id="round">1</strong>
+          <span>等级</span>
+          <strong id="level">1</strong>
         </div>
         <div class="stat">
           <span>限时</span>
@@ -50,7 +50,7 @@
           <div class="timer-fill" id="timerFill"></div>
         </div>
         <div class="prompt-row">
-          <p class="prompt">点击对应的大写字母</p>
+          <p class="prompt" id="promptText">点击对应的大写字母</p>
           <div class="combo-badge" id="comboBadge" aria-live="polite">
             <span>连击</span>
             <strong id="comboCount">0</strong>
@@ -69,17 +69,26 @@
 
       <section class="progress-panel" aria-label="进度">
         <div>
-          <span class="mini-label">连对提速</span>
-          <strong id="speedHint">连对 0/10</strong>
+          <span class="mini-label">题数</span>
+          <strong id="round">1</strong>
         </div>
         <div>
-          <span class="mini-label">连错回退</span>
-          <strong id="mistakeHint">连错 0/3</strong>
+          <span class="mini-label">模式</span>
+          <strong id="modeLabel">英语</strong>
+        </div>
+        <div>
+          <span class="mini-label">下一关</span>
+          <strong id="nextLevelHint">差 20 分</strong>
         </div>
         <div>
           <span class="mini-label">最高分</span>
           <strong id="bestScore">0</strong>
         </div>
+      </section>
+
+      <section class="stats-float" id="statsFloat" aria-label="正确率统计" hidden>
+        <div class="stats-title">正确率统计</div>
+        <div class="stats-grid" id="statsGrid"></div>
       </section>
     </main>
 
