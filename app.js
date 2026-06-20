@@ -8,13 +8,13 @@ const STATS_STORAGE_KEY = "bdpq-accuracy-stats-v1";
 const modes = {
   english: {
     label: "英语",
-    eyebrow: "英语字母辨认",
+    eyebrow: "看清题目，点选答案",
     prompt: "点击对应的大写字母",
     choices: ["B", "D", "P", "Q"],
   },
   pinyin: {
     label: "拼音",
-    eyebrow: "拼音声母辨认",
+    eyebrow: "看清题目，点选答案",
     prompt: "这个字的声母是？",
     choices: ["b", "d", "p", "q"],
   },
@@ -96,7 +96,7 @@ const resetButton = document.querySelector("#resetButton");
 const choiceButtons = [...document.querySelectorAll(".choice")];
 
 let currentQuestion = { display: "", answer: "b", pinyin: "b" };
-let currentMode = "english";
+let currentMode = pickStartingMode();
 let score = 0;
 let level = 1;
 let completed = 0;
@@ -191,6 +191,10 @@ function renderAccuracyStats() {
       `;
     })
     .join("");
+}
+
+function pickStartingMode() {
+  return Math.random() < 0.5 ? "english" : "pinyin";
 }
 
 function toggleMode() {
@@ -506,7 +510,7 @@ function resetGame() {
   completed = 0;
   timeLimit = INITIAL_TIME_LIMIT;
   comboStreak = 0;
-  currentMode = "english";
+  currentMode = pickStartingMode();
   currentQuestion = { display: "", answer: "b", pinyin: "b" };
   startRound({ paused: true });
 }

@@ -1,7 +1,7 @@
 {
-  "name": "bdpq 快速辨认小游戏",
-  "short_name": "bdpq",
-  "description": "练习辨认 b、d、p、q 的触控小游戏。",
+  "name": "快眼小挑战",
+  "short_name": "快眼挑战",
+  "description": "练习辨认字母、声母等题型的触控小游戏。",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
